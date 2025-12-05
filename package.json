@@ -19,6 +19,7 @@
     "heatmapchart",
     "histogramchart",
     "jaeger",
+    "logexplorer",
     "logstable",
     "loki",
     "markdown",
