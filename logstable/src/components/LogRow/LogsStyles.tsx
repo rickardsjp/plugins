@@ -20,6 +20,7 @@ export const LogRowContainer = styled(Box, {
   transition: 'all 0.2s ease',
   marginBottom: '4px',
   fontFamily: '"DejaVu Sans Mono", monospace',
+  userSelect: 'text',
 }));
 
 export const LogRowContent = styled(Box, {
