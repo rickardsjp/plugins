@@ -31,7 +31,7 @@ function parseTimestamp(timestamp: string): Date {
 /**
  * Formats labels as key=value pairs
  */
-function formatLabels(labels: Record<string, string>): string {
+export function formatLabels(labels: Record<string, string>): string {
   const entries = Object.entries(labels);
   if (entries.length === 0) return '';
   return entries.map(([key, value]) => `${key}="${value}"`).join(' ');
@@ -45,6 +45,20 @@ export function formatLogEntry(log: LogEntry): string {
   const timestamp = formatTimestamp(log.timestamp);
   const labels = formatLabels(log.labels || {});
   return labels ? `${timestamp} ${labels} ${log.line}` : `${timestamp} ${log.line}`;
+}
+
+/**
+ * Formats just the log message text (no timestamp or labels)
+ */
+export function formatLogMessage(log: LogEntry): string {
+  return log.line;
+}
+
+/**
+ * Formats a log entry as JSON
+ */
+export function formatLogAsJson(log: LogEntry): string {
+  return JSON.stringify(log, null, 2);
 }
 
 /**

@@ -12,14 +12,27 @@
 // limitations under the License.
 
 import React, { memo, useCallback, useState, useRef, ClipboardEvent } from 'react';
-import { Box, Collapse, useTheme, IconButton, Tooltip } from '@mui/material';
+import {
+  Box,
+  Collapse,
+  useTheme,
+  IconButton,
+  Tooltip,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
+} from '@mui/material';
 import ChevronRight from 'mdi-material-ui/ChevronRight';
 import ContentCopy from 'mdi-material-ui/ContentCopy';
+import ChevronDown from 'mdi-material-ui/ChevronDown';
+import FormatQuoteClose from 'mdi-material-ui/FormatQuoteClose';
+import CodeJson from 'mdi-material-ui/CodeJson';
 import { LogEntry } from '@perses-dev/core';
 import { LogTimestamp } from './LogTimestamp';
 import { LogRowContainer, LogRowContent, ExpandButton, LogText } from './LogsStyles';
 import { LogDetailsTable } from './LogDetailsTable';
-import { formatLogEntry, copyToClipboard } from '../../utils/copyHelpers';
+import { formatLogEntry, formatLogMessage, formatLogAsJson, copyToClipboard } from '../../utils/copyHelpers';
 
 interface LogRowProps {
   log?: LogEntry;
@@ -43,6 +56,7 @@ const DefaultLogRow: React.FC<LogRowProps> = ({
   const theme = useTheme();
   const severityColor = theme.palette.text.secondary;
   const [isHovered, setIsHovered] = useState(false);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const rowRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const detailsRef = useRef<HTMLDivElement>(null);
@@ -53,14 +67,37 @@ const DefaultLogRow: React.FC<LogRowProps> = ({
     }
   }, [isExpandable, onToggle, index]);
 
+  const handleOpenMenu = useCallback((e: React.MouseEvent<HTMLElement>) => {
+    e.stopPropagation();
+    setAnchorEl(e.currentTarget);
+  }, []);
+
+  const handleCloseMenu = useCallback(() => {
+    setAnchorEl(null);
+    setIsHovered(false);
+  }, []);
+
   const handleCopy = useCallback(
-    async (e: React.MouseEvent) => {
-      e.stopPropagation();
-      if (log) {
-        await copyToClipboard(formatLogEntry(log));
+    async (format: 'full' | 'message' | 'json') => {
+      if (!log) return;
+
+      let text: string;
+      switch (format) {
+        case 'message':
+          text = formatLogMessage(log);
+          break;
+        case 'json':
+          text = formatLogAsJson(log);
+          break;
+        case 'full':
+        default:
+          text = formatLogEntry(log);
       }
+
+      await copyToClipboard(text);
+      handleCloseMenu();
     },
-    [log]
+    [log, handleCloseMenu]
   );
 
   const handleCopyEvent = useCallback(
@@ -90,11 +127,20 @@ const DefaultLogRow: React.FC<LogRowProps> = ({
       severityColor={severityColor}
       ref={rowRef}
       onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseLeave={() => {
+        if (!anchorEl) {
+          setIsHovered(false);
+        }
+      }}
       onCopy={handleCopyEvent}
       data-log-index={index}
     >
-      <LogRowContent ref={contentRef} onClick={handleToggle} isExpandable={isExpandable}>
+      <LogRowContent
+        ref={contentRef}
+        onClick={handleToggle}
+        isExpandable={isExpandable}
+        isHighlighted={Boolean(anchorEl)}
+      >
         {isExpandable && (
           <Box
             sx={{
@@ -123,24 +169,109 @@ const DefaultLogRow: React.FC<LogRowProps> = ({
           <LogText variant="body2" allowWrap={allowWrap}>
             {log.line}
           </LogText>
-          {isHovered && (
-            <Tooltip title="Copy log">
-              <IconButton
-                size="small"
-                onClick={handleCopy}
-                sx={{
-                  padding: '2px',
-                  marginLeft: 'auto',
-                  color: theme.palette.text.secondary,
-                  '&:hover': {
-                    color: theme.palette.primary.main,
-                  },
-                }}
-              >
-                <ContentCopy sx={{ fontSize: '14px' }} />
-              </IconButton>
-            </Tooltip>
-          )}
+          <Tooltip title="Copy options">
+            <IconButton
+              size="small"
+              onClick={handleOpenMenu}
+              sx={{
+                padding: '4px',
+                marginLeft: 'auto',
+                color: theme.palette.text.secondary,
+                opacity: isHovered || Boolean(anchorEl) ? 1 : 0,
+                pointerEvents: isHovered || Boolean(anchorEl) ? 'auto' : 'none',
+                transition: 'opacity 0.08s ease',
+                '&:hover': {
+                  color: theme.palette.primary.main,
+                  backgroundColor: theme.palette.action.hover,
+                },
+                borderRadius: '4px',
+                display: 'flex',
+                gap: '2px',
+              }}
+            >
+              <ContentCopy sx={{ fontSize: '14px' }} />
+              <ChevronDown sx={{ fontSize: '12px' }} />
+            </IconButton>
+          </Tooltip>
+          <Menu
+            anchorEl={anchorEl}
+            open={Boolean(anchorEl)}
+            onClose={handleCloseMenu}
+            onClick={(e) => e.stopPropagation()}
+            anchorOrigin={{
+              vertical: 'bottom',
+              horizontal: 'right',
+            }}
+            transformOrigin={{
+              vertical: 'top',
+              horizontal: 'right',
+            }}
+            PaperProps={{
+              sx: {
+                mt: 0.5,
+                minWidth: 180,
+                boxShadow: theme.shadows[3],
+              },
+            }}
+          >
+            <MenuItem
+              onClick={() => handleCopy('full')}
+              sx={{
+                py: 1,
+                '&:hover': {
+                  backgroundColor: theme.palette.action.hover,
+                },
+              }}
+            >
+              <ListItemIcon>
+                <ContentCopy fontSize="small" />
+              </ListItemIcon>
+              <ListItemText
+                primary="Copy log"
+                secondary="Timestamp + labels + message"
+                primaryTypographyProps={{ fontSize: '14px' }}
+                secondaryTypographyProps={{ fontSize: '11px' }}
+              />
+            </MenuItem>
+            <MenuItem
+              onClick={() => handleCopy('message')}
+              sx={{
+                py: 1,
+                '&:hover': {
+                  backgroundColor: theme.palette.action.hover,
+                },
+              }}
+            >
+              <ListItemIcon>
+                <FormatQuoteClose fontSize="small" />
+              </ListItemIcon>
+              <ListItemText
+                primary="Copy message"
+                secondary="Message text only"
+                primaryTypographyProps={{ fontSize: '14px' }}
+                secondaryTypographyProps={{ fontSize: '11px' }}
+              />
+            </MenuItem>
+            <MenuItem
+              onClick={() => handleCopy('json')}
+              sx={{
+                py: 1,
+                '&:hover': {
+                  backgroundColor: theme.palette.action.hover,
+                },
+              }}
+            >
+              <ListItemIcon>
+                <CodeJson fontSize="small" />
+              </ListItemIcon>
+              <ListItemText
+                primary="Copy as JSON"
+                secondary="Full log entry"
+                primaryTypographyProps={{ fontSize: '14px' }}
+                secondaryTypographyProps={{ fontSize: '11px' }}
+              />
+            </MenuItem>
+          </Menu>
         </Box>
       </LogRowContent>
 

@@ -24,14 +24,15 @@ export const LogRowContainer = styled(Box, {
 }));
 
 export const LogRowContent = styled(Box, {
-  shouldForwardProp: (prop) => prop !== 'isExpandable',
-})<{ isExpandable: boolean }>(({ theme, isExpandable }) => ({
+  shouldForwardProp: (prop) => prop !== 'isExpandable' && prop !== 'isHighlighted',
+})<{ isExpandable: boolean; isHighlighted?: boolean }>(({ theme, isExpandable, isHighlighted }) => ({
   display: 'grid',
   gridTemplateColumns: isExpandable ? '16px minmax(160px, max-content) 1fr' : 'minmax(160px, max-content) 1fr',
   alignItems: 'flex-start',
   padding: '4px 8px',
   cursor: isExpandable ? 'pointer' : 'default',
   gap: '12px',
+  backgroundColor: isHighlighted ? theme.palette.action.hover : 'transparent',
   '&:hover': {
     backgroundColor: theme.palette.action.hover,
   },
