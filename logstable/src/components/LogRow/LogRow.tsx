@@ -28,6 +28,7 @@ import ContentCopy from 'mdi-material-ui/ContentCopy';
 import ChevronDown from 'mdi-material-ui/ChevronDown';
 import FormatQuoteClose from 'mdi-material-ui/FormatQuoteClose';
 import CodeJson from 'mdi-material-ui/CodeJson';
+import Check from 'mdi-material-ui/Check';
 import { LogEntry } from '@perses-dev/core';
 import { LogTimestamp } from './LogTimestamp';
 import { LogRowContainer, LogRowContent, ExpandButton, LogText } from './LogsStyles';
@@ -57,9 +58,8 @@ const DefaultLogRow: React.FC<LogRowProps> = ({
   const severityColor = theme.palette.text.secondary;
   const [isHovered, setIsHovered] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [copySuccess, setCopySuccess] = useState(false);
   const rowRef = useRef<HTMLDivElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
-  const detailsRef = useRef<HTMLDivElement>(null);
 
   const handleToggle = useCallback(() => {
     if (isExpandable) {
@@ -95,7 +95,11 @@ const DefaultLogRow: React.FC<LogRowProps> = ({
       }
 
       await copyToClipboard(text);
+      setCopySuccess(true);
       handleCloseMenu();
+
+      // Reset success state after 1.5 seconds
+      setTimeout(() => setCopySuccess(false), 1500);
     },
     [log, handleCloseMenu]
   );
@@ -135,12 +139,7 @@ const DefaultLogRow: React.FC<LogRowProps> = ({
       onCopy={handleCopyEvent}
       data-log-index={index}
     >
-      <LogRowContent
-        ref={contentRef}
-        onClick={handleToggle}
-        isExpandable={isExpandable}
-        isHighlighted={Boolean(anchorEl)}
-      >
+      <LogRowContent onClick={handleToggle} isExpandable={isExpandable} isHighlighted={Boolean(anchorEl)}>
         {isExpandable && (
           <Box
             sx={{
@@ -169,19 +168,20 @@ const DefaultLogRow: React.FC<LogRowProps> = ({
           <LogText variant="body2" allowWrap={allowWrap}>
             {log.line}
           </LogText>
-          <Tooltip title="Copy options">
+          <Tooltip title={copySuccess ? 'Copied!' : 'Copy options'}>
             <IconButton
               size="small"
               onClick={handleOpenMenu}
+              aria-label="Copy log options"
               sx={{
                 padding: '4px',
                 marginLeft: 'auto',
-                color: theme.palette.text.secondary,
-                opacity: isHovered || Boolean(anchorEl) ? 1 : 0,
-                pointerEvents: isHovered || Boolean(anchorEl) ? 'auto' : 'none',
-                transition: 'opacity 0.08s ease',
+                color: copySuccess ? theme.palette.success.main : theme.palette.text.secondary,
+                opacity: isHovered || Boolean(anchorEl) || copySuccess ? 1 : 0,
+                pointerEvents: isHovered || Boolean(anchorEl) || copySuccess ? 'auto' : 'none',
+                transition: 'opacity 0.08s ease, color 0.2s ease',
                 '&:hover': {
-                  color: theme.palette.primary.main,
+                  color: copySuccess ? theme.palette.success.main : theme.palette.primary.main,
                   backgroundColor: theme.palette.action.hover,
                 },
                 borderRadius: '4px',
@@ -189,8 +189,14 @@ const DefaultLogRow: React.FC<LogRowProps> = ({
                 gap: '2px',
               }}
             >
-              <ContentCopy sx={{ fontSize: '14px' }} />
-              <ChevronDown sx={{ fontSize: '12px' }} />
+              {copySuccess ? (
+                <Check sx={{ fontSize: '14px' }} />
+              ) : (
+                <>
+                  <ContentCopy sx={{ fontSize: '14px' }} />
+                  <ChevronDown sx={{ fontSize: '12px' }} />
+                </>
+              )}
             </IconButton>
           </Tooltip>
           <Menu
@@ -198,6 +204,7 @@ const DefaultLogRow: React.FC<LogRowProps> = ({
             open={Boolean(anchorEl)}
             onClose={handleCloseMenu}
             onClick={(e) => e.stopPropagation()}
+            aria-label="Copy format options"
             anchorOrigin={{
               vertical: 'bottom',
               horizontal: 'right',
@@ -276,7 +283,7 @@ const DefaultLogRow: React.FC<LogRowProps> = ({
       </LogRowContent>
 
       <Collapse in={isExpanded} timeout={200}>
-        <Box ref={detailsRef} sx={{ padding: '8px' }}>
+        <Box sx={{ padding: '8px' }}>
           <Box
             sx={{
               display: 'grid',
